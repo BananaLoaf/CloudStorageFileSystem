@@ -1,12 +1,13 @@
 from setuptools import find_packages
 
-__version__ = "1.0"
+NAME = "CloudStorageFileSystem"
+__version__ = "1.0"  # TODO
 
 
 PAYLOAD = {
-    "name": "CloudStorageFileSystem",
+    "name": NAME,
     "version": __version__,
-    "install_requires": [],
+    "install_requires": [],  # TODO
     "packages": find_packages(),
     "entry_points": {
         "console_scripts": [

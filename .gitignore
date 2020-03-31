@@ -1,6 +1,4 @@
 
-*/__pycache__/
-
 .idea/
 
 dist/
@@ -8,3 +6,9 @@ dist/
 build/
 
 CloudStorageFileSystem.egg-info/
+
+CloudStorageFileSystem/service/__pycache__/
+
+CloudStorageFileSystem/utils/__pycache__/
+
+CloudStorageFileSystem/__pycache__/

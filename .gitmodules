@@ -1,0 +1,3 @@
+[submodule "CloudStorageFileSystem/service/GoogleDrive"]
+	path = CloudStorageFileSystem/service/GoogleDrive
+	url = https://github.com/BananaLoaf/csfs-google-drive.git
