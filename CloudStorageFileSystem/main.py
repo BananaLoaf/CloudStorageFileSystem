@@ -1,12 +1,11 @@
 from argparse import ArgumentParser
 import sys
-import random
-import string
 
 from pathlib import Path
 
 from CloudStorageFileSystem import NAME, __version__
 from CloudStorageFileSystem.service import SERVICES
+from CloudStorageFileSystem.utils.exceptions import *
 from CloudStorageFileSystem.utils.servicesupervisor import ServiceSupervisor
 from CloudStorageFileSystem.logger import LOGGER, configure_logger
 
@@ -44,6 +43,7 @@ class Starter:
         start.set_defaults(func=self.start)
 
     def __call__(self):
+        self.app_path.mkdir(exist_ok=True, parents=True)
         args = self.parser.parse_args()
 
         if args.version:
@@ -53,7 +53,11 @@ class Starter:
             args.func(args)
 
     def get_ss(self, service_name: str, profile_name: str) -> ServiceSupervisor:
-        return SERVICES[service_name](app_path=self.app_path, profile_name=profile_name)
+        try:
+            return SERVICES[service_name](app_path=self.app_path, profile_name=profile_name)
+        except ServiceCreationError as err:
+            LOGGER.error(err)
+            sys.exit()
 
     @property
     def profiles(self):
@@ -71,26 +75,27 @@ class Starter:
             print(f"{ss.SERVICE_LABEL}: '{ss.SERVICE_NAME}' - '{profile}'")
 
     def create_profile(self, args):
-        self.app_path.mkdir(exist_ok=True, parents=True)
-
         service_name = getattr(args, SERVICE_NAME)
         profile_name = getattr(args, PROFILE_NAME)
+
+        ss = self.get_ss(service_name=service_name, profile_name=profile_name)
         try:
-            ss = self.get_ss(service_name=service_name, profile_name=profile_name)
             ss.create_profile()
-        except AssertionError as err:
+            LOGGER.info(f"Created profile '{service_name}' - '{profile_name}' in ")
+        except ProfileCreationError as err:
             LOGGER.error(err)
+            ss.remove_profile()
             sys.exit()
-        LOGGER.info(f"Created profile '{service_name}' - '{profile_name}'")
 
     def start(self, args):
         service_name = getattr(args, SERVICE_NAME)
         profile_name = getattr(args, PROFILE_NAME)
         verbose = getattr(args, VERBOSE)
+
+        ss = self.get_ss(service_name=service_name, profile_name=profile_name)
         try:
-            ss = self.get_ss(service_name=service_name, profile_name=profile_name)
             ss.start(verbose=verbose)
-        except AssertionError as err:
+        except ProfileStartingError as err:
             LOGGER.error(err)
             sys.exit()
 

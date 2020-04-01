@@ -1,20 +1,32 @@
 import json
+import shutil
+from threading import Thread
+from typing import Tuple
 
 from pathlib import Path
 
 from CloudStorageFileSystem.utils.validator import Validator
-from CloudStorageFileSystem.logger import LOGGER, configure_logger
+from CloudStorageFileSystem.utils.exceptions import *
+from CloudStorageFileSystem.logger import configure_logger
+
+
+class ThreadHandler:
+    def __init__(self, t: Thread, if_join: bool):
+        self.thread = t
+        self.if_join = if_join
 
 
 class ServiceSupervisor:
     SERVICE_NAME: str = "default-service"
     SERVICE_LABEL: str = "Default Service"
 
-    config: dict = {}
+    config: dict
 
     def __init__(self, app_path: Path, profile_name: str):
-        assert "/" not in profile_name, "Slash in profile name is not allowed!"
-        assert "None" != profile_name, "Profile name can not be 'None'!"
+        if "/" not in profile_name:
+            raise ServiceCreationError("Slash in profile name is not allowed!")
+        if "None" != profile_name:
+            raise ServiceCreationError("Profile name can not be 'None'!")
 
         self.service_path = app_path.joinpath(self.SERVICE_NAME)
         self.profile_path = self.service_path.joinpath(profile_name)
@@ -24,6 +36,11 @@ class ServiceSupervisor:
         Validator(self.schema).validate(self.config)
         with self.profile_path.joinpath("config.json").open("w") as file:
             json.dump(self.config, file, indent=4)
+
+    def load_config(self):
+        with self.profile_path.joinpath("config.json").open("r") as file:
+            self.config = json.load(file)
+        Validator(self.schema).validate(self.config)
 
     @property
     def profile_name(self):
@@ -37,11 +54,13 @@ class ServiceSupervisor:
     def schema(self) -> dict:
         raise NotImplementedError
 
+    @property
     def exists(self):
         return self.profile_path.exists()
 
     def create_profile(self):
-        assert not self.exists(), f"Profile '{self.SERVICE_NAME}' - '{self.profile_name}' already exists"
+        if self.exists:
+            raise ProfileCreationError(f"Profile '{self.SERVICE_NAME}' - '{self.profile_name}' already exists")
 
         self.service_path.mkdir(exist_ok=True)
         self.profile_path.mkdir()
@@ -49,22 +68,35 @@ class ServiceSupervisor:
 
         self._create_profile()
 
-        self.config.update(self.default_config)
+        self.config = self.default_config
         self.save_config()
 
     def _create_profile(self):
-        """User input, authentication, save credentials, etc"""
+        """User input, authentication, save credentials, etc.
+        raising ProfileCreationError(message) would delete the profile and log the message
+        """
         raise NotImplementedError
 
-    def start(self, verbose: bool):
-        assert self.exists(), f"Profile '{self.SERVICE_NAME}' - '{self.profile_name}' does not exist"
-        configure_logger(verbose=verbose, service_label=self.SERVICE_LABEL, profile_name=self.profile_name)
-        self._preload()
+    def remove_profile(self):
+        shutil.rmtree(str(self.profile_path), ignore_errors=True)
 
-        # TODO get threads
-        # TODO start threads
+    def start(self, verbose: bool):
+        if not self.exists:
+            raise ProfileStartingError(f"Profile '{self.SERVICE_NAME}' - '{self.profile_name}' does not exist")
+        configure_logger(verbose=verbose, service_label=self.SERVICE_LABEL, profile_name=self.profile_name)
+        self.load_config()
+        ths = self._start()
+
+        # Start all threads
+        for th in ths:
+            th.thread.start()
+        # Join threads before mounting, if needed
+        for th in ths:
+            if th.if_join:
+                th.thread.join()
+        # Mount
         # TODO get FS, start FS
 
-    def _preload(self):
-        """Load credentials, etc"""
+    def _start(self) -> Tuple[ThreadHandler, ...]:
+        """Load credentials, init whatever is needed"""
         raise NotImplementedError
