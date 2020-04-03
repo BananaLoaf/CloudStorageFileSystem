@@ -1,13 +1,16 @@
 import json
 import shutil
 from threading import Thread
-from typing import Tuple
+from typing import Tuple, List
 
 from pathlib import Path
+from refuse.high import FUSE
 
 from CloudStorageFileSystem.utils.validator import Validator
+from CloudStorageFileSystem.utils.filesystem import FileSystem
+from CloudStorageFileSystem.utils.operations import CustomOperations
 from CloudStorageFileSystem.utils.exceptions import *
-from CloudStorageFileSystem.logger import configure_logger
+from CloudStorageFileSystem.logger import configure_logger, LOGGER
 
 
 class ThreadHandler:
@@ -84,9 +87,32 @@ class ServiceSupervisor:
         if not self.exists:
             raise ProfileStartingError(f"Profile '{self.SERVICE_NAME}' - '{self.profile_name}' does not exist")
         configure_logger(verbose=verbose, service_label=self.SERVICE_LABEL, profile_name=self.profile_name)
-        self.load_config()
-        ths = self._start()
 
+        self.load_config()
+        fs, ths = self._start()
+
+        ################################################################
+        # Check mountpoint
+        mountpoint = fs.mountpoint
+        try:
+            if not mountpoint.exists():
+                LOGGER.info(f"Mountpoint '{mountpoint}' does not exist, creating...")
+                mountpoint.mkdir(parents=True)
+
+            assert mountpoint.is_dir(), f"Mountpoint '{mountpoint}' is not a directory"
+            assert len(list(mountpoint.iterdir())) == 0, f"Mountpoint '{mountpoint}' is not empty"
+            try:
+                assert not mountpoint.is_mount(), f"Mountpoint '{mountpoint}' is already a mountpoint"
+            except AttributeError:  # Python3.6 and below
+                import os
+                assert not os.path.ismount(str(mountpoint)), f"Mountpoint '{mountpoint}' is already a mountpoint"
+
+        except AssertionError as err:
+            raise ProfileStartingError(err)
+        except OSError as err:
+            raise ProfileStartingError(f"{err}, To fix this run \"fusermount -u '{mountpoint}'\"")
+
+        ################################################################
         # Start all threads
         for th in ths:
             th.thread.start()
@@ -94,9 +120,12 @@ class ServiceSupervisor:
         for th in ths:
             if th.if_join:
                 th.thread.join()
-        # Mount
-        # TODO get FS, start FS
 
-    def _start(self) -> Tuple[ThreadHandler, ...]:
+        ################################################################
+        # Mount
+        ops = CustomOperations(fs)
+        FUSE(ops, mountpoint, foreground=True)
+
+    def _start(self) -> Tuple[FileSystem, List[ThreadHandler, ...]]:
         """Load credentials, init whatever is needed"""
         raise NotImplementedError
