@@ -1,6 +1,6 @@
 import errno
 import stat
-from typing import Any, List, Tuple
+from typing import Union, List, Tuple
 
 from refuse.high import FuseOSError
 from pathlib import Path
@@ -36,9 +36,7 @@ class Stat:
 
 
 class FileSystem:
-    def __init__(self, mountpoint: Path):
-        self.mountpoint = mountpoint
-
+    # FS ops
     def init(self, path: str):
         """Called on filesystem initialization. Path is always /"""
         pass
@@ -63,6 +61,7 @@ class FileSystem:
     def ioctl(self, path, cmd, arg, fip, flags, data):
         raise FuseOSError(errno.ENOTTY)
 
+    ################################################################
     # Permissions
     def access(self, path: str, amode) -> int:
         return 0
@@ -73,6 +72,7 @@ class FileSystem:
     def chown(self, path: str, uid, gid):
         raise FuseOSError(errno.EROFS)
 
+    ################################################################
     # Dir ops
     def getattr(self, path: str, fh) -> Stat:
         """
@@ -94,7 +94,7 @@ class FileSystem:
     def fsyncdir(self, path: str, datasync, fh) -> int:
         return 0
 
-    def readdir(self, path: str, fh) -> Any[List[str], Tuple[str, Stat, int]]:
+    def readdir(self, path: str, fh) -> Union[List[str], List[Tuple[str, Stat, int]]]:
         """
         Can return either a list of names, or a list of (name, attrs, offset)
         tuples. attrs is a dict as in getattr.
@@ -168,6 +168,7 @@ class FileSystem:
     def release(self, path: str, fh) -> int:
         return 0
 
+    ################################################################
     # Extended attributes
     def setxattr(self, path: str, name, value, options, position: int):
         raise FuseOSError(errno.ENOTSUP)

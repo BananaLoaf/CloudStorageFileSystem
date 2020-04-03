@@ -89,11 +89,10 @@ class ServiceSupervisor:
         configure_logger(verbose=verbose, service_label=self.SERVICE_LABEL, profile_name=self.profile_name)
 
         self.load_config()
-        fs, ths = self._start()
+        fs, mountpoint, ths = self._start()
 
         ################################################################
         # Check mountpoint
-        mountpoint = fs.mountpoint
         try:
             if not mountpoint.exists():
                 LOGGER.info(f"Mountpoint '{mountpoint}' does not exist, creating...")
@@ -126,6 +125,6 @@ class ServiceSupervisor:
         ops = CustomOperations(fs)
         FUSE(ops, mountpoint, foreground=True)
 
-    def _start(self) -> Tuple[FileSystem, List[ThreadHandler, ...]]:
+    def _start(self) -> Tuple[FileSystem, Path, List[ThreadHandler]]:
         """Load credentials, init whatever is needed"""
         raise NotImplementedError
