@@ -26,9 +26,9 @@ class ServiceSupervisor:
     config: dict
 
     def __init__(self, app_path: Path, profile_name: str):
-        if "/" not in profile_name:
+        if "/" in profile_name:
             raise ServiceCreationError("Slash in profile name is not allowed!")
-        if "None" != profile_name:
+        if "None" == profile_name:
             raise ServiceCreationError("Profile name can not be 'None'!")
 
         self.service_path = app_path.joinpath(self.SERVICE_NAME)
@@ -123,7 +123,7 @@ class ServiceSupervisor:
         ################################################################
         # Mount
         ops = CustomOperations(fs)
-        FUSE(ops, mountpoint, foreground=True)
+        FUSE(ops, str(mountpoint), foreground=True)
 
     def _start(self) -> Tuple[FileSystem, Path, List[ThreadHandler]]:
         """Load credentials, init whatever is needed"""

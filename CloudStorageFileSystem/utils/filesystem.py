@@ -9,11 +9,11 @@ from pathlib import Path
 class Stat:
     def __init__(self, is_dir: bool,
                  size: int,
-                 atime: Any[int, float],
-                 mtime: Any[int, float],
-                 ctime: Any[int, float]):
+                 atime: Union[int, float],
+                 mtime: Union[int, float],
+                 ctime: Union[int, float]):
         self.st_mode = stat.S_IFDIR | 0o755 if is_dir else stat.S_IFREG | 0o644
-        self.st_ino = 2 if is_dir else 1
+        # self.st_ino = 2 if is_dir else 1
         self.st_nlink = 1
 
         self.st_size = size

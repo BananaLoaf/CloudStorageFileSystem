@@ -81,7 +81,7 @@ class Starter:
         ss = self.get_ss(service_name=service_name, profile_name=profile_name)
         try:
             ss.create_profile()
-            LOGGER.info(f"Created profile '{service_name}' - '{profile_name}' in ")
+            LOGGER.info(f"Created profile '{service_name}' - '{profile_name}' in {ss.profile_path}")
         except ProfileCreationError as err:
             LOGGER.error(err)
             ss.remove_profile()

@@ -4,6 +4,8 @@ from typing import List, Tuple, Optional, Union
 from functools import wraps
 import time
 
+from pathlib import Path
+
 
 def lock(func):
     @wraps(func)
@@ -32,9 +34,69 @@ def handle_exceptions(func):
     return wrapped
 
 
+def eval_kwargs(headers: dict):
+    def decorator(func):
+        @wraps(func)
+        def wrapped(self, **kwargs):
+            for key in kwargs.keys():
+                assert key in headers.keys(), f"Invalid key '{key}' in kwargs"
+
+            return func(self, **kwargs)
+
+        return wrapped
+    return decorator
+
+
+class DatabaseItem:
+    _headers = {}
+    _data = {}
+
+    @classmethod
+    def from_list(cls, row: Union[list, tuple]):
+        data = {}
+        for i, name in enumerate(cls._headers.keys()):
+            data[name] = row[i]
+
+        obj = cls()
+        obj._data = data
+        return obj
+
+    @classmethod
+    def from_kwargs(cls, **kwargs):
+        self = cls()
+
+        if len(kwargs.keys()) == len(self._headers.keys()):
+            for key in self._headers.keys():
+                if key not in kwargs.keys():
+                    raise KeyError(key)
+
+            self._data = kwargs
+
+            return self
+        else:
+            raise KeyError("Invalid key")
+
+    @property
+    def list(self) -> list:
+        return list(self._data.values())
+
+    @property
+    def tuple(self) -> tuple:
+        return tuple(self._data.values())
+
+    def __getitem__(self, item):
+        return self._data[item]
+
+    def __setitem__(self, key, value):
+        self._data[key] = value
+
+    def __len__(self):
+        return len(self._data)
+
+
 class Database:
-    def __init__(self, filename: str):
-        self.conn = sqlite3.connect(filename, check_same_thread=False)
+    def __init__(self, filename: Path):
+        self.conn = sqlite3.connect(str(filename), check_same_thread=False)
         self.lock = threading.Lock()
 
     def create_table(self, name: str, headers: dict, reset: bool = True):
