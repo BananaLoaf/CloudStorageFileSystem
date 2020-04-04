@@ -2,12 +2,12 @@ import json
 import shutil
 from threading import Thread
 from typing import Tuple, List
+import os
 
 from pathlib import Path
 from refuse.high import FUSE
 
 from CloudStorageFileSystem.utils.validator import Validator
-from CloudStorageFileSystem.utils.filesystem import FileSystem
 from CloudStorageFileSystem.utils.operations import CustomOperations
 from CloudStorageFileSystem.utils.exceptions import *
 from CloudStorageFileSystem.logger import configure_logger, LOGGER
@@ -89,7 +89,7 @@ class ServiceSupervisor:
         configure_logger(verbose=verbose, service_label=self.SERVICE_LABEL, profile_name=self.profile_name)
 
         self.load_config()
-        fs, mountpoint, ths = self._start()
+        ops, mountpoint, ths = self._start()
 
         ################################################################
         # Check mountpoint
@@ -102,8 +102,7 @@ class ServiceSupervisor:
             assert len(list(mountpoint.iterdir())) == 0, f"Mountpoint '{mountpoint}' is not empty"
             try:
                 assert not mountpoint.is_mount(), f"Mountpoint '{mountpoint}' is already a mountpoint"
-            except AttributeError:  # Python3.6 and below
-                import os
+            except AttributeError:
                 assert not os.path.ismount(str(mountpoint)), f"Mountpoint '{mountpoint}' is already a mountpoint"
 
         except AssertionError as err:
@@ -122,9 +121,8 @@ class ServiceSupervisor:
 
         ################################################################
         # Mount
-        ops = CustomOperations(fs)
-        FUSE(ops, str(mountpoint), foreground=True)
+        FUSE(ops, str(mountpoint), foreground=True, intr=True, uid=os.getuid(), gid=os.getgid())
 
-    def _start(self) -> Tuple[FileSystem, Path, List[ThreadHandler]]:
+    def _start(self) -> Tuple[CustomOperations, Path, List[ThreadHandler]]:
         """Load credentials, init whatever is needed"""
         raise NotImplementedError
