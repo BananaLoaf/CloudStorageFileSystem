@@ -1,4 +1,4 @@
-class ServiceCreationError(Exception):
+class ProfileInitializationError(Exception):
     pass
 
 

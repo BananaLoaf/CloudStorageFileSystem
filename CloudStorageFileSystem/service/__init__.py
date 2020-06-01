@@ -1,5 +1,5 @@
-from CloudStorageFileSystem.service.GoogleDrive import GoogleDriveSS
+from CloudStorageFileSystem.service.GoogleDrive import GoogleDriveProfile
 
 SERVICES = {
-    GoogleDriveSS.SERVICE_NAME: GoogleDriveSS
+    GoogleDriveProfile.SERVICE_NAME: GoogleDriveProfile
 }
