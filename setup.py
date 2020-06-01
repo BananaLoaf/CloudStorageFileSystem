@@ -1,25 +1,44 @@
-try:
-    from setuptools import setup
-except ModuleNotFoundError:
-    from distutils.core import setup
+from setuptools import setup, find_packages
 
-from CloudStorageFileSystem import PAYLOAD
+from CloudStorageFileSystem import PACKAGE_NAME, __version__
 
 
 with open("README.md", "r") as file:
     LONG_DESCRIPTION = file.read()
-PAYLOAD["long_description"] = LONG_DESCRIPTION
 
+setup(name=PACKAGE_NAME,
+      version=__version__,
+      install_requires=[],  # TODO requirements
+      packages=find_packages(),
+      entry_points={
+          "console_scripts": [
+              "csfs = CloudStorageFileSystem.main:main"
+          ]
+      },
 
-import json
-assert PAYLOAD["description"] == "CloudStorageFileSystem"
-assert json.dumps(PAYLOAD).find("TEMPLATE") == -1
-assert json.dumps(PAYLOAD).find("null") == -1
+      # Metadata for PyPi
+      author="BananaLoaf",
+      author_email="bananaloaf@protonmail.com",
+      # maintainer="BananaLoaf",
+      # maintainer_email="bananaloaf@protonmail.com",
+      license="MIT",
 
+      description="CloudStorageFileSystem",
+      long_description=LONG_DESCRIPTION,
+      long_description_content_type="text/markdown",
+      keywords=[],
 
-kwargs = {}
-for key in PAYLOAD:
-    if PAYLOAD[key] is not None:
-        kwargs[key] = PAYLOAD[key]
+      url="https://github.com/BananaLoaf/CloudStorageFileSystem",
+      # download_url=None,
+      # project_urls={
+      #     "Lord and Saviour": "https://stackoverflow.com/"
+      # },
 
-setup(**kwargs)
+      # https://pypi.org/classifiers/
+      # classifiers=[
+      #     "Development Status :: 5 - Production/Stable",
+      #     "Programming Language :: Python :: 3",
+      #     "License :: OSI Approved :: MIT License",
+      #     "Operating System :: OS Independent"
+      # ]
+      )
