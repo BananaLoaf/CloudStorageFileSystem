@@ -22,6 +22,7 @@ class ThreadHandler:
 class Profile:
     SERVICE_NAME: str = "default-service"
     SERVICE_LABEL: str = "Default Service"
+    VERSION: str = "1.0"
 
     config: dict
 
@@ -32,8 +33,11 @@ class Profile:
             raise ProfileInitializationError("Profile name can not be 'None'!")
 
         self.profile_path = app_path.joinpath(self.SERVICE_NAME).joinpath(profile_name)
-        self.profile_name = self.profile_path.stem
+        self.PROFILE_NAME = self.profile_path.stem
         self.cache_path = self.profile_path.joinpath("cache")
+
+    def __repr__(self):
+        return f"'{self.SERVICE_NAME}' - '{self.PROFILE_NAME}'"
 
     # Config management
     @property
@@ -57,14 +61,7 @@ class Profile:
         Validator(self.schema).validate(self.config)
 
     # Profile management
-    @property
-    def exists(self):
-        return self.profile_path.exists()
-
     def create(self):
-        if self.exists:
-            raise ProfileCreationError(f"Profile '{self.SERVICE_NAME}' - '{self.profile_name}' already exists")
-
         self.config = self.default_config
         self._create()
 
@@ -79,10 +76,9 @@ class Profile:
         """
         raise NotImplementedError
 
-    def remove(self, cleanup: bool = False):
+    def remove(self):
         """Clean up and remove the files"""
-        if cleanup:
-            self._remove()
+        self._remove()
         shutil.rmtree(str(self.profile_path), ignore_errors=True)
 
     def _remove(self):
@@ -91,8 +87,8 @@ class Profile:
 
     def start(self, verbose: bool, read_only: bool):
         if not self.exists:
-            raise ProfileStartingError(f"Profile '{self.SERVICE_NAME}' - '{self.profile_name}' does not exist")
-        configure_logger(verbose=verbose, service_label=self.SERVICE_LABEL, profile_name=self.profile_name)
+            raise ProfileStartingError(f"Profile {self}' does not exist")
+        configure_logger(verbose=verbose, service_label=self.SERVICE_LABEL, profile_name=self.PROFILE_NAME)
 
         self.load_config()
         ops, mountpoint, ths = self._start()

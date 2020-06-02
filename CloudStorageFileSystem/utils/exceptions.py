@@ -2,7 +2,15 @@ class ProfileInitializationError(Exception):
     pass
 
 
+class ProfileExistsError(Exception):
+    pass
+
+
 class ProfileCreationError(Exception):
+    pass
+
+
+class ProfileRemovalError(Exception):
     pass
 
 
