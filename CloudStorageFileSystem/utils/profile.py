@@ -49,13 +49,13 @@ class Profile:
         raise NotImplementedError
 
     def save_config(self):
-        """Validating config and saving it"""
+        """Validate config and save it"""
         Validator(self.schema).validate(self.config)
         with self.profile_path.joinpath("config.json").open("w") as file:
             json.dump(self.config, file, indent=4)
 
     def load_config(self):
-        """Loading config and validating it"""
+        """Load config and validate it"""
         with self.profile_path.joinpath("config.json").open("r") as file:
             self.config = json.load(file)
         Validator(self.schema).validate(self.config)
@@ -72,7 +72,7 @@ class Profile:
     def _create(self):
         """
         Called after config initialization for user input, authentication, saving credentials, adding something to config, etc.
-        Raising ProfileCreationError(message) would delete the profile and log the message
+        Raising ProfileCreationError(message) would log the message and call self.remove()
         """
         raise NotImplementedError
 
@@ -86,8 +86,6 @@ class Profile:
         raise NotImplementedError
 
     def start(self, verbose: bool, read_only: bool):
-        if not self.exists:
-            raise ProfileStartingError(f"Profile {self}' does not exist")
         configure_logger(verbose=verbose, service_label=self.SERVICE_LABEL, profile_name=self.PROFILE_NAME)
 
         self.load_config()
@@ -107,6 +105,13 @@ class Profile:
         # Mount
         FUSE(ops, str(mountpoint), foreground=True, intr=True, ro=read_only, uid=os.getuid(), gid=os.getgid())
 
+    def _start(self) -> Tuple[CustomOperations, Path, List[ThreadHandler]]:
+        """
+        Load credentials, init whatever is needed
+        Returns CustomOperations, mountpoint, list of thread handlers
+        """
+        raise NotImplementedError
+
     def check_mountpoint(self, mountpoint: Path):
         try:
             if not mountpoint.exists():
@@ -124,10 +129,3 @@ class Profile:
             raise ProfileStartingError(err)
         except OSError as err:
             raise ProfileStartingError(f"{err}, unmount manually with \"fusermount -u '{mountpoint}'\"")
-
-    def _start(self) -> Tuple[CustomOperations, Path, List[ThreadHandler]]:
-        """
-        Load credentials, init whatever is needed
-        Returns CustomOperations, mountpoint, list of thread handlers
-        """
-        raise NotImplementedError

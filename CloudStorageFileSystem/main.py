@@ -128,22 +128,28 @@ class Starter:
         profile_name = getattr(args, PROFILE_NAME)
 
         profile = self.get_profile(service_name=service_name, profile_name=profile_name)
-        if self.profile_exists(profile):
-            LOGGER.error(f"Profile {profile} already exists")
+        try:
+            if self.profile_exists(profile):
+                raise ProfileCreationError(f"Profile {profile} already exists")
 
-        else:
             profile.create()
             self.profile_dicts.append(self.profile2dict(profile))
             self._save_profiles()
             LOGGER.info(f"Created profile {profile}")
+
+        except ProfileCreationError as err:
+            LOGGER.error(err)
+            profile.remove()
 
     def remove_profile(self, args):
         service_name = getattr(args, SERVICE_NAME)
         profile_name = getattr(args, PROFILE_NAME)
 
         profile = self.get_profile(service_name=service_name, profile_name=profile_name)
-        if self.profile_exists(profile):
-            # TODO Add confirmation y/N
+        try:
+            if not self.profile_exists(profile):
+                raise ProfileRemovalError(f"Profile {profile} does not exist")
+
             while True:
                 resp = input(f"Are you sure you want to remove profile {profile}? [y/n]\n")
                 if resp == "y":
@@ -153,8 +159,8 @@ class Starter:
                 elif resp == "n":
                     break
 
-        else:
-            LOGGER.error(f"Profile {profile} does not exist")
+        except ProfileRemovalError as err:
+            LOGGER.error(err)
 
     def start_profile(self, args):
         service_name = getattr(args, SERVICE_NAME)
@@ -162,12 +168,15 @@ class Starter:
         verbose = getattr(args, VERBOSE)
         read_only = getattr(args, READ_ONLY)
 
-        ss = self.get_profile(service_name=service_name, profile_name=profile_name)
+        profile = self.get_profile(service_name=service_name, profile_name=profile_name)
         try:
-            ss.start(verbose=verbose, read_only=read_only)
+            if not self.profile_exists(profile):
+                raise ProfileStartingError(f"Profile {profile} does not exist")
+
+            profile.start(verbose=verbose, read_only=read_only)
+
         except ProfileStartingError as err:
             LOGGER.error(err)
-            sys.exit()
 
 
 def main():
