@@ -6,6 +6,10 @@ class ProfileExistsError(Exception):
     pass
 
 
+class ProfileNotExistsError(Exception):
+    pass
+
+
 class ProfileCreationError(Exception):
     pass
 

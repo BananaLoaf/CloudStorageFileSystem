@@ -87,7 +87,7 @@ class Starter:
 
     def _save_profiles(self):
         with self.profile_reg.open("w") as file:
-            json.dump(self.profile_dicts, file)
+            json.dump(self.profile_dicts, file, indent=4)
 
     def profile_exists(self, profile: Profile):
         for profile_dict in self.profile_dicts:
@@ -130,7 +130,7 @@ class Starter:
         profile = self.get_profile(service_name=service_name, profile_name=profile_name)
         try:
             if self.profile_exists(profile):
-                raise ProfileCreationError(f"Profile {profile} already exists")
+                raise ProfileExistsError(f"Profile {profile} already exists")
 
             profile.create()
             self.profile_dicts.append(self.profile2dict(profile))
@@ -141,6 +141,9 @@ class Starter:
             LOGGER.error(err)
             profile.remove()
 
+        except ProfileExistsError as err:
+            LOGGER.error(err)
+
     def remove_profile(self, args):
         service_name = getattr(args, SERVICE_NAME)
         profile_name = getattr(args, PROFILE_NAME)
@@ -148,7 +151,7 @@ class Starter:
         profile = self.get_profile(service_name=service_name, profile_name=profile_name)
         try:
             if not self.profile_exists(profile):
-                raise ProfileRemovalError(f"Profile {profile} does not exist")
+                raise ProfileNotExistsError(f"Profile {profile} does not exist")
 
             while True:
                 resp = input(f"Are you sure you want to remove profile {profile}? [y/n]\n")
@@ -162,6 +165,9 @@ class Starter:
         except ProfileRemovalError as err:
             LOGGER.error(err)
 
+        except ProfileNotExistsError as err:
+            LOGGER.error(err)
+
     def start_profile(self, args):
         service_name = getattr(args, SERVICE_NAME)
         profile_name = getattr(args, PROFILE_NAME)
@@ -171,11 +177,14 @@ class Starter:
         profile = self.get_profile(service_name=service_name, profile_name=profile_name)
         try:
             if not self.profile_exists(profile):
-                raise ProfileStartingError(f"Profile {profile} does not exist")
+                raise ProfileNotExistsError(f"Profile {profile} does not exist")
 
             profile.start(verbose=verbose, read_only=read_only)
 
         except ProfileStartingError as err:
+            LOGGER.error(err)
+
+        except ProfileNotExistsError as err:
             LOGGER.error(err)
 
 

@@ -27,10 +27,9 @@ class Profile:
     config: dict
 
     def __init__(self, app_path: Path, profile_name: str):
+        """Raise ProfileInitializationError in case of anything"""
         if "/" in profile_name:
             raise ProfileInitializationError("'/' in profile name is not allowed!")
-        if "None" == profile_name:
-            raise ProfileInitializationError("Profile name can not be 'None'!")
 
         self.profile_path = app_path.joinpath(self.SERVICE_NAME).joinpath(profile_name)
         self.PROFILE_NAME = self.profile_path.stem
@@ -39,6 +38,7 @@ class Profile:
     def __repr__(self):
         return f"'{self.SERVICE_NAME}' - '{self.PROFILE_NAME}'"
 
+    ################################################################
     # Config management
     @property
     def default_config(self) -> dict:
@@ -48,18 +48,19 @@ class Profile:
     def schema(self) -> dict:
         raise NotImplementedError
 
-    def save_config(self):
+    def _save_config(self):
         """Validate config and save it"""
         Validator(self.schema).validate(self.config)
         with self.profile_path.joinpath("config.json").open("w") as file:
             json.dump(self.config, file, indent=4)
 
-    def load_config(self):
+    def _load_config(self):
         """Load config and validate it"""
         with self.profile_path.joinpath("config.json").open("r") as file:
             self.config = json.load(file)
         Validator(self.schema).validate(self.config)
 
+    ################################################################
     # Profile management
     def create(self):
         self.config = self.default_config
@@ -67,7 +68,7 @@ class Profile:
 
         self.profile_path.mkdir(parents=True)
         self.cache_path.mkdir()
-        self.save_config()
+        self._save_config()
 
     def _create(self):
         """
@@ -82,13 +83,16 @@ class Profile:
         shutil.rmtree(str(self.profile_path), ignore_errors=True)
 
     def _remove(self):
-        """Called for removing credentials, etc"""
+        """
+        Called for removing credentials, etc
+        Raise ProfileRemovalError in case of anything
+        """
         raise NotImplementedError
 
     def start(self, verbose: bool, read_only: bool):
         configure_logger(verbose=verbose, service_label=self.SERVICE_LABEL, profile_name=self.PROFILE_NAME)
 
-        self.load_config()
+        self._load_config()
         ops, mountpoint, ths = self._start()
         self.check_mountpoint(mountpoint)
 
@@ -103,12 +107,13 @@ class Profile:
 
         ################################################################
         # Mount
-        FUSE(ops, str(mountpoint), foreground=True, intr=True, ro=read_only, uid=os.getuid(), gid=os.getgid())
+        FUSE(ops, str(mountpoint), foreground=True, intr=True, ro=read_only, uid=os.getuid(), gid=os.getgid(), nothreads=True)
 
     def _start(self) -> Tuple[CustomOperations, Path, List[ThreadHandler]]:
         """
         Load credentials, init whatever is needed
         Returns CustomOperations, mountpoint, list of thread handlers
+        Raise ProfileStartingError in case of anything
         """
         raise NotImplementedError
 
@@ -119,6 +124,7 @@ class Profile:
                 mountpoint.mkdir(parents=True)
 
             assert mountpoint.is_dir(), f"Mountpoint '{mountpoint}' is not a directory"
+            assert mountpoint.absolute(), f"Mountpoint '{mountpoint}' must be absolute"
             assert len(list(mountpoint.iterdir())) == 0, f"Mountpoint '{mountpoint}' is not empty"
             try:
                 assert not mountpoint.is_mount(), f"Mountpoint '{mountpoint}' is already a mountpoint"
