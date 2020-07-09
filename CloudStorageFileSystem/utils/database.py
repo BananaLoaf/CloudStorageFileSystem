@@ -34,27 +34,17 @@ def handle_exceptions(func):
     return wrapped
 
 
-def eval_kwargs(headers: dict):
-    def decorator(func):
-        @wraps(func)
-        def wrapped(self, **kwargs):
-            for key in kwargs.keys():
-                assert key in headers.keys(), f"Invalid key '{key}' in kwargs"
-
-            return func(self, **kwargs)
-
-        return wrapped
-    return decorator
-
-
 class DatabaseItem:
-    _headers = {}
-    _data = {}
+    headers = {}
+    not_required = []
+
+    def __init__(self):
+        self._data = {}
 
     @classmethod
     def from_list(cls, row: Union[list, tuple]):
         data = {}
-        for i, name in enumerate(cls._headers.keys()):
+        for i, name in enumerate(cls.headers.keys()):
             data[name] = row[i]
 
         obj = cls()
@@ -65,16 +55,13 @@ class DatabaseItem:
     def from_kwargs(cls, **kwargs):
         self = cls()
 
-        if len(kwargs.keys()) == len(self._headers.keys()):
-            for key in self._headers.keys():
-                if key not in kwargs.keys():
-                    raise KeyError(key)
+        for key in self.headers.keys():
+            if key not in kwargs.keys() and key not in self.not_required:
+                raise KeyError(key)
+            elif key not in self.not_required:
+                self._data[key] = kwargs[key]
 
-            self._data = kwargs
-
-            return self
-        else:
-            raise KeyError("Invalid key")
+        return self
 
     @property
     def list(self) -> list:
@@ -93,13 +80,29 @@ class DatabaseItem:
     def __len__(self):
         return len(self._data)
 
+    def __repr__(self):
+        return str(self._data)
+
+
+def eval_kwargs(cls: DatabaseItem):
+    def decorator(func):
+        @wraps(func)
+        def wrapped(self, **kwargs):
+            for key in kwargs.keys():
+                assert key in cls.headers.keys(), f"Invalid key '{key}' in kwargs"
+
+            return func(self, **kwargs)
+
+        return wrapped
+    return decorator
+
 
 class Database:
     def __init__(self, filename: Path):
         self.conn = sqlite3.connect(str(filename), check_same_thread=False)
         self.lock = threading.Lock()
 
-    def create_table(self, name: str, headers: dict, reset: bool = True):
+    def create_table(self, name: str, headers: dict, reset: bool = False):
         if reset:
             self.conn.execute(f"DROP TABLE IF EXISTS '{name}'")
         columns = ", ".join([f"'{key}' {headers[key]}" for key in headers.keys()])
