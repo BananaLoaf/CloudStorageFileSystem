@@ -5,10 +5,10 @@ from typing import Tuple, List
 import os
 
 from pathlib import Path
-from refuse.high import FUSE
+import pyfuse3
+import trio
 
 from CloudStorageFileSystem.utils.validator import Validator
-from CloudStorageFileSystem.utils.operations import CustomOperations
 from CloudStorageFileSystem.utils.exceptions import *
 from CloudStorageFileSystem.logger import configure_logger, LOGGER
 
@@ -107,9 +107,21 @@ class Profile:
 
         ################################################################
         # Mount
-        FUSE(ops, str(mountpoint), foreground=True, intr=True, ro=read_only, uid=os.getuid(), gid=os.getgid(), nothreads=True)
+        options = set(pyfuse3.default_options)
+        options.add(f"fsname={ops.__class__.__name__}")
+        # options.add(f"user_id={os.getuid()}")
+        # options.add(f"group_id={os.getgid()}")
+        if read_only:
+            options.add("ro")
 
-    def _start(self) -> Tuple[CustomOperations, Path, List[ThreadHandler]]:
+        pyfuse3.init(ops, str(mountpoint), options)
+        try:
+            trio.run(pyfuse3.main)
+        except:
+            pyfuse3.close(unmount=True)
+            raise
+
+    def _start(self) -> Tuple[pyfuse3.Operations, Path, List[ThreadHandler]]:
         """
         Load credentials, init whatever is needed
         Returns CustomOperations, mountpoint, list of thread handlers

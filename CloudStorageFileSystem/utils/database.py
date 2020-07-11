@@ -64,12 +64,11 @@ class DatabaseItem:
         return self
 
     @property
-    def list(self) -> list:
-        return list(self._data.values())
-
-    @property
     def tuple(self) -> tuple:
-        return tuple(self._data.values())
+        l = []
+        for key in self.headers.keys():
+            l.append(self[key])
+        return tuple(l)
 
     def __getitem__(self, item):
         return self._data[item]
