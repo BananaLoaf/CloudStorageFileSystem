@@ -3,5 +3,5 @@ jsonschema
 google-api-python-client
 google-auth-oauthlib
 google-auth-httplib2
-refuse
+pyfuse3
 keyring
