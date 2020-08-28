@@ -19,6 +19,15 @@ VERBOSE = "VERBOSE"
 READ_ONLY = "READ_ONLY"
 
 
+def ask(message: str) -> bool:
+    while True:
+        resp = input(f"{message} [y/n] ")
+        if resp == "y":
+            return True
+        elif resp == "n":
+            return False
+
+
 class Starter:
     app_path: Path = Path.home().joinpath(".csfs")
     profile_reg = app_path.joinpath("profiles.json")
@@ -153,14 +162,10 @@ class Starter:
             if not self.profile_exists(profile):
                 raise ProfileNotExistsError(f"Profile {profile} does not exist")
 
-            while True:
-                resp = input(f"Are you sure you want to remove profile {profile}? [y/n]\n")
-                if resp == "y":
-                    profile.remove()
-                    LOGGER.info(f"Removed profile {profile}")
-                    break
-                elif resp == "n":
-                    break
+            if ask(f"Are you sure you want to remove profile {profile}?"):
+                profile.remove()
+                # TODO remove from dict
+                LOGGER.info(f"Removed profile {profile}")
 
         except ProfileRemovalError as err:
             LOGGER.error(err)
