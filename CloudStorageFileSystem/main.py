@@ -30,8 +30,6 @@ def ask(message: str) -> bool:
 
 class Starter:
     app_path: Path = Path.home().joinpath(".csfs")
-    profile_reg = app_path.joinpath("profiles.json")
-    profile_dicts: List[dict]
 
     def __init__(self):
         self.parser = ArgumentParser()  # TODO help
@@ -71,7 +69,6 @@ class Starter:
             print(f"{PACKAGE_NAME} v{__version__}")
         else:
             configure_logger(verbose=getattr(args, VERBOSE))
-            self._load_profiles()
             args.func(args)
 
     # Helpers
@@ -82,27 +79,8 @@ class Starter:
             LOGGER.error(err)
             sys.exit()
 
-    def profile2dict(self, profile: Profile) -> dict:
-        return {SERVICE_NAME: profile.SERVICE_NAME,
-                PROFILE_NAME: profile.PROFILE_NAME,
-                VERSION: profile.VERSION}
-
-    def _load_profiles(self):
-        if self.profile_reg.exists():
-            with self.profile_reg.open("r") as file:
-                self.profile_dicts = json.load(file)
-        else:
-            self.profile_dicts = []
-
-    def _save_profiles(self):
-        with self.profile_reg.open("w") as file:
-            json.dump(self.profile_dicts, file, indent=4)
-
     def profile_exists(self, profile: Profile):
-        for profile_dict in self.profile_dicts:
-            if profile_dict[SERVICE_NAME] == profile.SERVICE_NAME and profile_dict[PROFILE_NAME] == profile.PROFILE_NAME:
-                return True
-        return False
+        return self.app_path.joinpath(profile.SERVICE_NAME).joinpath(profile.PROFILE_NAME).exists()
 
     # Commands
     def list_services(self, args):
@@ -111,26 +89,32 @@ class Starter:
 
     def list_profiles(self, args):
         print("--------------------------------")
-        for profile_dict in self.profile_dicts:
-            valid_service = profile_dict[SERVICE_NAME] in SERVICES.keys()
+        for service in self.app_path.glob("*"):
+            for profile in service.glob("*"):
+                service_name_line = f"Service name: '{service.name}'"
+                profile_name_line = f"Profile name: '{profile.name}'"
 
-            service_name_line = f"Service name: '{profile_dict[SERVICE_NAME]}'"
-            profile_name_line = f"Profile name: '{profile_dict[PROFILE_NAME]}'"
-            version_line = f"Version: v{profile_dict[VERSION]}"
+                version_file = profile.joinpath('VERSION')
+                if version_file.exists():
+                    with version_file.open("r") as file:
+                        version_line = f"Version: v{file.read()}"
+                else:
+                    version_line = f"Version: ???"
 
-            if valid_service:
-                profile = self.get_profile(service_name=profile_dict[SERVICE_NAME],
-                                           profile_name=profile_dict[PROFILE_NAME])
-                version_line += f" (latest version: v{profile.VERSION})"
+                # Is service valid
+                if service.name in SERVICES.keys():
+                    profile = self.get_profile(service_name=service.name,
+                                               profile_name=profile.name)
+                    version_line += f" (latest version: v{profile.VERSION})"
 
-            else:
-                service_name_line += " (invalid service!)"
-                version_line += " (latest version: ???)"
+                else:
+                    service_name_line += " (invalid service!)"
+                    version_line += " (latest version: ???)"
 
-            print(service_name_line)
-            print(profile_name_line)
-            print(version_line)
-            print("--------------------------------")
+                print(service_name_line)
+                print(profile_name_line)
+                print(version_line)
+                print("--------------------------------")
 
     def create_profile(self, args):
         service_name = getattr(args, SERVICE_NAME)
@@ -142,8 +126,6 @@ class Starter:
                 raise ProfileExistsError(f"Profile {profile} already exists")
 
             profile.create()
-            self.profile_dicts.append(self.profile2dict(profile))
-            self._save_profiles()
             LOGGER.info(f"Created profile {profile}")
 
         except ProfileCreationError as err:
@@ -164,7 +146,6 @@ class Starter:
 
             if ask(f"Are you sure you want to remove profile {profile}?"):
                 profile.remove()
-                # TODO remove from dict
                 LOGGER.info(f"Removed profile {profile}")
 
         except ProfileRemovalError as err:

@@ -68,6 +68,10 @@ class Profile:
 
         self.profile_path.mkdir(parents=True)
         self.cache_path.mkdir()
+
+        with self.profile_path.joinpath("VERSION").open("w") as file:
+            file.write(self.VERSION)
+
         self._save_config()
 
     def _create(self):
