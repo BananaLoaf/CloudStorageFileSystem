@@ -113,10 +113,12 @@ class Profile:
         # Mount
         options = set(pyfuse3.default_options)
         options.add(f"fsname={ops.__class__.__name__}")
-        # options.add(f"user_id={os.getuid()}")
-        # options.add(f"group_id={os.getgid()}")
+        options.discard("default_permissions")
+        options.add("auto_unmount")
         if read_only:
             options.add("ro")
+        else:
+            options.add("rw")
 
         pyfuse3.init(ops, str(mountpoint), options)
         try:
