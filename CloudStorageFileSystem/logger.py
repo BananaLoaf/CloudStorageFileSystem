@@ -14,11 +14,11 @@ def configure_logger(verbose: bool, service_label: Optional[str] = None, profile
 
     if verbose:
         LOGGER.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(f"%(funcName)s [{identity}] %(levelname)s: %(message)s")
+         # formatter = logging.Formatter(f"%(funcName)s [{identity}] %(levelname)s: %(message)s")
     else:
         LOGGER.setLevel(logging.INFO)
         # formatter = logging.Formatter(f"%(name)s [%(asctime)s] %(levelname)s - %(message)s")
-        formatter = logging.Formatter(f"[{identity}] %(levelname)s: %(message)s")
+    formatter = logging.Formatter(f"[{identity}] %(levelname)s: %(message)s")
 
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)

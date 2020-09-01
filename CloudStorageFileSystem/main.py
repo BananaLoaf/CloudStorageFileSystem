@@ -32,7 +32,7 @@ class Starter:
     app_path: Path = Path.home().joinpath(".csfs")
 
     def __init__(self):
-        self.parser = ArgumentParser()  # TODO help
+        self.parser = ArgumentParser()
         self.parser.set_defaults(func=lambda args: self.parser.print_help())
         subparser = self.parser.add_subparsers()
 
@@ -46,19 +46,19 @@ class Starter:
         list_profiles.set_defaults(func=self.list_profiles)
 
         create_profile = subparser.add_parser("create-profile")
-        create_profile.add_argument(SERVICE_NAME, type=str, choices=list(SERVICES.keys()), help="")  # TODO help
-        create_profile.add_argument(PROFILE_NAME, type=str, help="")  # TODO help
+        create_profile.add_argument(SERVICE_NAME, type=str, choices=list(SERVICES.keys()))
+        create_profile.add_argument(PROFILE_NAME, type=str, help="Desired profile name")
         create_profile.set_defaults(func=self.create_profile)
 
         remove_profile = subparser.add_parser("remove-profile")
-        remove_profile.add_argument(SERVICE_NAME, type=str, choices=list(SERVICES.keys()), help="")  # TODO help
-        remove_profile.add_argument(PROFILE_NAME, type=str, help="")  # TODO help
+        remove_profile.add_argument(SERVICE_NAME, type=str, choices=list(SERVICES.keys()))
+        remove_profile.add_argument(PROFILE_NAME, type=str, help="Name of profile to remove")
         remove_profile.set_defaults(func=self.remove_profile)
 
         start_profile = subparser.add_parser("start-profile")
-        start_profile.add_argument("-ro", "--read-only", action="store_true", help="", dest=READ_ONLY)  # TODO help
-        start_profile.add_argument(SERVICE_NAME, type=str, choices=list(SERVICES.keys()), help="")  # TODO help
-        start_profile.add_argument(PROFILE_NAME, type=str, help="")  # TODO help
+        start_profile.add_argument("-ro", "--read-only", action="store_true", dest=READ_ONLY)
+        start_profile.add_argument(SERVICE_NAME, type=str, choices=list(SERVICES.keys()), help="")
+        start_profile.add_argument(PROFILE_NAME, type=str, help="Profile to start")
         start_profile.set_defaults(func=self.start_profile)
 
     def __call__(self):
