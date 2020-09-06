@@ -7,6 +7,9 @@ import time
 from pathlib import Path
 
 
+ROWID = "rowid"
+
+
 def lock(func):
     @wraps(func)
     def wrapped(self, *args, **kwargs):
@@ -36,6 +39,7 @@ def handle_exceptions(func):
 
 class DatabaseItem:
     headers = {}
+    ignored_keys = [ROWID]
     not_required = []
 
     def __init__(self):
@@ -88,6 +92,8 @@ def eval_kwargs(cls: DatabaseItem):
         @wraps(func)
         def wrapped(self, **kwargs):
             for key in kwargs.keys():
+                if key in cls.ignored_keys:
+                    continue
                 assert key in cls.headers.keys(), f"Invalid key '{key}' in kwargs"
 
             return func(self, **kwargs)
