@@ -1,6 +1,6 @@
 import sqlite3
 import threading
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple, Optional, Union, Type
 from functools import wraps
 import time
 
@@ -87,7 +87,7 @@ class DatabaseItem:
         return str(self._data)
 
 
-def eval_kwargs(cls: DatabaseItem):
+def eval_kwargs(cls: Type[DatabaseItem]):
     def decorator(func):
         @wraps(func)
         def wrapped(self, **kwargs):

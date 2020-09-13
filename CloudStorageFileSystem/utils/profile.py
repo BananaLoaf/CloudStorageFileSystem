@@ -14,9 +14,9 @@ from CloudStorageFileSystem.logger import configure_logger, LOGGER
 
 
 class ThreadHandler:
-    def __init__(self, t: Thread, if_join: bool):
+    def __init__(self, t: Thread, join: bool):
         self.thread = t
-        self.if_join = if_join
+        self.join = join
 
 
 class Profile:
@@ -106,7 +106,7 @@ class Profile:
             th.thread.start()
         # Join threads before mounting, if needed
         for th in ths:
-            if th.if_join:
+            if th.join:
                 th.thread.join()
 
         ################################################################
