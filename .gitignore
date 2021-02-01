@@ -12,3 +12,5 @@ CloudStorageFileSystem/service/__pycache__/
 CloudStorageFileSystem/utils/__pycache__/
 
 CloudStorageFileSystem/__pycache__/
+
+venv/

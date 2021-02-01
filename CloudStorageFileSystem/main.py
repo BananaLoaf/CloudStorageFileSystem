@@ -80,7 +80,7 @@ class Starter:
             sys.exit()
 
     def profile_exists(self, profile: Profile):
-        return self.app_path.joinpath(profile.SERVICE_NAME).joinpath(profile.PROFILE_NAME).exists()
+        return self.app_path.joinpath(profile.service_name).joinpath(profile.profile_name).exists()
 
     # Commands
     def list_services(self, args):
@@ -105,7 +105,7 @@ class Starter:
                 if service.name in SERVICES.keys():
                     profile = self.get_profile(service_name=service.name,
                                                profile_name=profile.name)
-                    version_line += f" (latest version: v{profile.VERSION})"
+                    version_line += f" (latest version: v{profile.version})"
 
                 else:
                     service_name_line += " (invalid service!)"

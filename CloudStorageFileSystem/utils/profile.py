@@ -1,4 +1,3 @@
-import json
 import shutil
 from threading import Thread
 from typing import Tuple, List
@@ -7,8 +6,9 @@ import os
 from pathlib import Path
 import pyfuse3
 import trio
+import yaml
+import yamale
 
-from CloudStorageFileSystem.utils.validator import Validator
 from CloudStorageFileSystem.utils.exceptions import *
 from CloudStorageFileSystem.logger import configure_logger, LOGGER
 
@@ -20,10 +20,6 @@ class ThreadHandler:
 
 
 class Profile:
-    SERVICE_NAME: str = "default-service"
-    SERVICE_LABEL: str = "Default Service"
-    VERSION: str = "1.0"
-
     config: dict
 
     def __init__(self, app_path: Path, profile_name: str):
@@ -31,46 +27,71 @@ class Profile:
         if "/" in profile_name:
             raise ProfileInitializationError("'/' in profile name is not allowed!")
 
-        self.profile_path = app_path.joinpath(self.SERVICE_NAME).joinpath(profile_name)
-        self.PROFILE_NAME = self.profile_path.stem
+        self._profile_name = profile_name
+
+        self.profile_path = app_path.joinpath(self.service_name).joinpath(profile_name)
         self.cache_path = self.profile_path.joinpath("cache")
 
     def __repr__(self):
-        return f"'{self.SERVICE_NAME}' - '{self.PROFILE_NAME}'"
+        return f"'{self.service_name}' - '{self.profile_name}'"
+
+    ################################################################
+    @property
+    def service_name(self) -> str:
+        raise NotImplementedError
+        return "default-service"
+
+    @property
+    def service_label(self) -> str:
+        raise NotImplementedError
+        return "Default Service"
+
+    @property
+    def profile_name(self) -> str:
+        return self._profile_name
+
+    @property
+    def version(self) -> str:
+        raise NotImplementedError
+        return "1.0"
 
     ################################################################
     # Config management
     @property
-    def default_config(self) -> dict:
+    def schema(self) -> dict:
+        """Scheme for yamale validator"""
         raise NotImplementedError
 
     @property
-    def schema(self) -> dict:
+    def default_config(self) -> dict:
+        """Default yaml config"""
         raise NotImplementedError
 
     def _save_config(self):
         """Validate config and save it"""
-        Validator(self.schema).validate(self.config)
+        yamale.validate(schema=yamale.make_schema(content=yaml.dump(self.schema)),
+                        data=self.config)
         with self.profile_path.joinpath("config.json").open("w") as file:
-            json.dump(self.config, file, indent=4)
+            yaml.dump(self.config, file)
 
     def _load_config(self):
         """Load config and validate it"""
         with self.profile_path.joinpath("config.json").open("r") as file:
-            self.config = json.load(file)
-        Validator(self.schema).validate(self.config)
+            self.config = yaml.load(file, Loader=yaml.SafeLoader)
+        yamale.validate(schema=yamale.make_schema(content=yaml.dump(self.schema)),
+                        data=self.config)
 
     ################################################################
     # Profile management
     def create(self):
-        self.config = self.default_config
-        self._create()
-
         self.profile_path.mkdir(parents=True)
         self.cache_path.mkdir()
 
         with self.profile_path.joinpath("VERSION").open("w") as file:
-            file.write(self.VERSION)
+            file.write(self.version)
+
+        self.config = self.default_config
+        self._create()
 
         self._save_config()
 
@@ -94,7 +115,7 @@ class Profile:
         raise NotImplementedError
 
     def start(self, verbose: bool, read_only: bool):
-        configure_logger(verbose=verbose, service_label=self.SERVICE_LABEL, profile_name=self.PROFILE_NAME)
+        configure_logger(verbose=verbose, service_label=self.service_label, profile_name=self.profile_name)
 
         self._load_config()
         ops, mountpoint, ths = self._start()
