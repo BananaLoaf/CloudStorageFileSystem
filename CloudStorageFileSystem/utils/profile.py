@@ -20,6 +20,10 @@ class ThreadHandler:
 
 
 class Profile:
+    service_name = "default-service"
+    service_label = "Default Service"
+    version = "1.0"
+
     config: dict
 
     def __init__(self, app_path: Path, profile_name: str):
@@ -37,23 +41,8 @@ class Profile:
 
     ################################################################
     @property
-    def service_name(self) -> str:
-        raise NotImplementedError
-        return "default-service"
-
-    @property
-    def service_label(self) -> str:
-        raise NotImplementedError
-        return "Default Service"
-
-    @property
     def profile_name(self) -> str:
         return self._profile_name
-
-    @property
-    def version(self) -> str:
-        raise NotImplementedError
-        return "1.0"
 
     ################################################################
     # Config management
@@ -70,7 +59,7 @@ class Profile:
     def _save_config(self):
         """Validate config and save it"""
         yamale.validate(schema=yamale.make_schema(content=yaml.dump(self.schema)),
-                        data=self.config)
+                        data=yamale.make_data(content=yaml.dump(self.config)))
         with self.profile_path.joinpath("config.json").open("w") as file:
             yaml.dump(self.config, file)
 
@@ -79,7 +68,7 @@ class Profile:
         with self.profile_path.joinpath("config.json").open("r") as file:
             self.config = yaml.load(file, Loader=yaml.SafeLoader)
         yamale.validate(schema=yamale.make_schema(content=yaml.dump(self.schema)),
-                        data=self.config)
+                        data=yamale.make_data(content=yaml.dump(self.config)))
 
     ################################################################
     # Profile management

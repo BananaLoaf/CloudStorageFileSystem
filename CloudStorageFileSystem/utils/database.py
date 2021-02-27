@@ -1,6 +1,6 @@
 import sqlite3
 import threading
-from typing import List, Tuple, Optional, Union, Type
+from typing import *
 from functools import wraps
 import time
 
@@ -38,41 +38,42 @@ def handle_exceptions(func):
 
 
 class DatabaseItem:
-    headers = {}
-    ignored_keys = [ROWID]
-    not_required = []
+    _columns = {}
+    _ignored_keys = [ROWID]
+    _not_required = []  # For defaults
 
     def __init__(self):
         self._data = {}
 
     @classmethod
     def from_list(cls, row: Union[list, tuple]):
-        data = {}
-        for i, name in enumerate(cls.headers.keys()):
-            data[name] = row[i]
+        self = cls()
 
-        obj = cls()
-        obj._data = data
-        return obj
+        for i, name in enumerate(self.headers):
+            self._data[name] = row[i]
+
+        return self
 
     @classmethod
     def from_kwargs(cls, **kwargs):
         self = cls()
 
-        for key in self.headers.keys():
-            if key not in kwargs.keys() and key not in self.not_required:
-                raise KeyError(key)
-            elif key not in self.not_required:
-                self._data[key] = kwargs[key]
+        for header in self.headers:
+            # If header is not in kwargs and IS required
+            if header not in kwargs.keys() and header not in self._not_required:
+                raise KeyError(header)
+            else:
+                self._data[header] = kwargs[header]
 
         return self
 
     @property
-    def tuple(self) -> tuple:
-        l = []
-        for key in self.headers.keys():
-            l.append(self[key])
-        return tuple(l)
+    def headers(self) -> tuple:
+        return tuple(self._columns.keys())
+
+    @property
+    def values(self) -> tuple:
+        return tuple(self._data.values())
 
     def __getitem__(self, item):
         return self._data[item]
@@ -92,9 +93,12 @@ def eval_kwargs(cls: Type[DatabaseItem]):
         @wraps(func)
         def wrapped(self, **kwargs):
             for key in kwargs.keys():
-                if key in cls.ignored_keys:
+                # Ignore existence of some keys
+                if key in cls._ignored_keys:
                     continue
-                assert key in cls.headers.keys(), f"Invalid key '{key}' in kwargs"
+
+                # Scream if some key is extra
+                assert key in cls._columns.keys(), f"Invalid key '{key}' in kwargs"
 
             return func(self, **kwargs)
 
@@ -107,22 +111,28 @@ class Database:
         self.conn = sqlite3.connect(str(filename), check_same_thread=False)
         self.lock = threading.Lock()
 
+    def drop_table(self, name: str):
+        self._execute(f"DROP TABLE IF EXISTS '{name}'")
+
     def create_table(self, name: str, headers: dict, reset: bool = False):
         if reset:
-            self.conn.execute(f"DROP TABLE IF EXISTS '{name}'")
+            self.drop_table(name)
         columns = ", ".join([f"'{key}' {headers[key]}" for key in headers.keys()])
-        self.conn.execute(f"CREATE TABLE IF NOT EXISTS '{name}' ({columns})")
+        self._execute(f"CREATE TABLE IF NOT EXISTS '{name}' ({columns})")
+
+    def create_index(self, table_name: str, column_name: str):
+        self._execute(f"CREATE INDEX IF NOT EXISTS {column_name}_index ON '{table_name}' ({column_name})")
 
     @lock
     @handle_exceptions
-    def _execute_fetchone(self, query: str, values: List) -> Tuple:
+    def _execute_fetchone(self, query: str, values: Union[List, Tuple]) -> Tuple:
         cursor = self.conn.cursor()
         cursor.execute(query, values)
         return cursor.fetchone()
 
     @lock
     @handle_exceptions
-    def _execute_fetchall(self, query: str, values: Optional[List] = None) -> List[Tuple]:
+    def _execute_fetchall(self, query: str, values: Optional[Union[List, Tuple]] = None) -> List[Tuple]:
         args = [query]
         if values is not None:
             args.append(values)
