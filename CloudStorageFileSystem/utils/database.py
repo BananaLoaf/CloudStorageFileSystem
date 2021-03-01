@@ -43,6 +43,7 @@ class DatabaseItem:
     _not_required = []  # For defaults
 
     def __init__(self):
+        self.rowid = 0
         self._data = {}
 
     @classmethod
@@ -112,51 +113,64 @@ class Database:
         self.lock = threading.Lock()
 
     def drop_table(self, name: str):
-        self._execute(f"DROP TABLE IF EXISTS '{name}'")
+        self._execute({f"DROP TABLE IF EXISTS '{name}'": None})
 
     def create_table(self, name: str, headers: dict, reset: bool = False):
         if reset:
             self.drop_table(name)
         columns = ", ".join([f"'{key}' {headers[key]}" for key in headers.keys()])
-        self._execute(f"CREATE TABLE IF NOT EXISTS '{name}' ({columns})")
+        self._execute({f"CREATE TABLE IF NOT EXISTS '{name}' ({columns})": None})
 
     def create_index(self, table_name: str, column_name: str):
-        self._execute(f"CREATE INDEX IF NOT EXISTS {column_name}_index ON '{table_name}' ({column_name})")
+        self._execute({f"CREATE INDEX IF NOT EXISTS {column_name}_index ON '{table_name}' ({column_name})": None})
 
     @lock
-    @handle_exceptions
-    def _execute_fetchone(self, query: str, values: Union[List, Tuple]) -> Tuple:
+    # @handle_exceptions
+    def _execute_fetchone(self, queries: Dict[str, Optional[Union[List, Tuple]]]) -> Optional[Tuple]:
         cursor = self.conn.cursor()
-        cursor.execute(query, values)
+
+        for query, values in queries.items():
+            if values is None:
+                cursor.execute(query)
+            else:
+                cursor.execute(query, values)
+
+        self.conn.commit()
         return cursor.fetchone()
 
     @lock
-    @handle_exceptions
-    def _execute_fetchall(self, query: str, values: Optional[Union[List, Tuple]] = None) -> List[Tuple]:
-        args = [query]
-        if values is not None:
-            args.append(values)
-
+    # @handle_exceptions
+    def _execute_fetchall(self, queries: Dict[str, Optional[Union[List, Tuple]]]) -> List[Tuple]:
         cursor = self.conn.cursor()
-        cursor.execute(*args)
+
+        for query, values in queries.items():
+            if values is None:
+                cursor.execute(query)
+            else:
+                cursor.execute(query, values)
+
+        self.conn.commit()
         return cursor.fetchall()
 
     @lock
-    @handle_exceptions
-    def _execute(self, query: str, values: Optional[Union[List, Tuple]] = None):
-        args = [query]
-        if values is not None:
-            args.append(values)
-
+    # @handle_exceptions
+    def _execute(self, queries: Dict[str, Optional[Union[List, Tuple]]]):
         cursor = self.conn.cursor()
-        cursor.execute(*args)
+
+        for query, values in queries.items():
+            if values is None:
+                cursor.execute(query)
+            else:
+                cursor.execute(query, values)
+
         self.conn.commit()
 
     @lock
-    @handle_exceptions
-    def _executemany(self, query: str, values: List):
-        args = [query, values]
-
+    # @handle_exceptions
+    def _executemany(self, queries: Dict[str, List]):
         cursor = self.conn.cursor()
-        cursor.executemany(*args)
+
+        for query, values in queries.items():
+            cursor.executemany(query, values)
+
         self.conn.commit()
